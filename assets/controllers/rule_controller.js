@@ -1,9 +1,10 @@
 import {Controller} from '@hotwired/stimulus';
+import { useDispatch } from 'stimulus-use';
 
 /* stimulusFetch: 'lazy' */
 export default class extends Controller {
 
-    static targets = ['rule', 'module', 'field', 'connector'];
+    static targets = ['rule', 'module', 'field', 'connector', 'more'];
     static values = {
         infoUrl: String,
         connectorSourceId: Number,
@@ -13,10 +14,22 @@ export default class extends Controller {
     }
 
     htmlOutput = null;
+    sourceHtmlOutput = null;
+    targetHtmlOutput = null;
+    moreFieldsSection = null;
+    connectorSourceIdDiv = document.querySelector('[data-rule-connector-source-id-value]');
+    connectorTargetIdDiv = document.querySelector('[data-rule-connector-target-id-value]');
+    moduleSourceIdDiv = document.querySelector('[data-rule-source-module-id-value]');
+    moduleTargetIdDiv = document.querySelector('[data-rule-target-module-id-value]');
 
     connect() {
         this.htmlOutput = document.createElement('div');
+        this.sourceHtmlOutput = document.createElement('div');
+        this.targetHtmlOutput = document.createElement('div');
+        this.moreFieldsSection = document.createElement('section');
+        this.moreFieldsSection.classList.add('additional-fields');
         const params = new URLSearchParams(window.location.search)
+        useDispatch(this);
     }
 
     async onSelectSource(event) {
@@ -61,12 +74,12 @@ export default class extends Controller {
 
     async onSelectModuleSource(event) {
         this.sourceModuleIdValue = event.currentTarget.value;
-         const response = await this.loadSourceFields(this.sourceModuleIdValue);
+        const response = await this.loadSourceFields(this.sourceModuleIdValue);
     }
 
     async onSelectModuleTarget(event) {
         this.targetModuleIdValue = event.currentTarget.value;
-         const response = await this.loadTargetFields(this.targetModuleIdValue);
+        const response = await this.loadTargetFields(this.targetModuleIdValue);
     }
 
     async loadSourceFields(sourceModuleId) {
@@ -74,8 +87,7 @@ export default class extends Controller {
             sourceModuleId: this.sourceModuleIdValue,
             connectorSourceId: this.connectorSourceIdValue,
         })
-        const connectorIdDiv = document.querySelector('[data-rule-connector-source-id-value]');
-        this.connectorSourceIdValue = connectorIdDiv.getAttribute("data-rule-connector-source-id-value");
+        this.connectorSourceIdValue = this.connectorSourceIdDiv.getAttribute('data-rule-connector-source-id-value');
         const response = await fetch(`get-fields/source/${this.connectorSourceIdValue.toString()}/module/${sourceModuleId.toString()}`)
             .then(response => response.text())
             .then((html) => {
@@ -92,10 +104,7 @@ export default class extends Controller {
             connectorTargetId: this.connectorTargetIdValue,
             targetModuleId: this.targetModuleIdValue,
         })
-
-        const connectorIdDiv = document.querySelector('[data-rule-connector-target-id-value]');
-        this.connectorTargetIdValue = connectorIdDiv.getAttribute("data-rule-connector-target-id-value");
-
+        this.connectorTargetIdValue = this.connectorTargetIdDiv.getAttribute('data-rule-connector-target-id-value');
         const response = await fetch(`get-fields/target/${this.connectorTargetIdValue.toString()}/module/${targetModuleId.toString()}`)
             .then(response => response.text())
             .then((html) => {
@@ -124,6 +133,7 @@ export default class extends Controller {
         addButton.classList.add('btn');
         addButton.classList.add('btn-warning');
         addButton.classList.add('btn-lg');
+        // addButton.setAttribute('formnovalidate', true);
         addButton.setAttribute('data-action', 'click->rule#addMoreFields');
         addButton.innerText = 'Add more fields to map';
         this.deletePreviousButton();
@@ -141,16 +151,112 @@ export default class extends Controller {
             }
         }
         buttonsToBeRemoved.forEach((div) => {
-           div.remove();
+            console.log(div);
+            div.remove();
         });
 
     }
 
-    async addMoreFields(event) {
-        console.log(event.currentTarget);
-        event.stopPropagation();
-        // @TODO: this currently sends event.currentTarget as null which then stops execution inside PHP controller
-        const source = await this.onSelectModuleSource(event);
-        const target = await this.onSelectModuleTarget(event);
+    async loadMoreSourceFields(sourceModuleId){
+        const params = new URLSearchParams({
+            sourceModuleId: this.sourceModuleIdValue,
+            connectorSourceId: this.connectorSourceIdValue,
+        })
+        this.connectorSourceIdValue = this.connectorSourceIdDiv.getAttribute('data-rule-connector-source-id-value');
+        const response = await fetch(`get-fields/source/${this.connectorSourceIdValue.toString()}/module/${sourceModuleId.toString()}`)
+            .then(response => response.text())
+            .then((html) => {
+                this.sourceHtmlOutput.innerHTML = html;
+                // this.moreFieldsSection.prepend(this.sourceHtmlOutput);
+            })
+            .catch(function(err) {
+                console.log('Failed to fetch response: ', err);
+            });
     }
+
+    async loadMoreTargetFields(targetModuleId){
+        const params = new URLSearchParams({
+            connectorTargetId: this.connectorTargetIdValue,
+            targetModuleId: this.targetModuleIdValue,
+        })
+
+        this.connectorTargetIdValue = this.connectorTargetIdDiv.getAttribute('data-rule-connector-target-id-value');
+        const response = await fetch(`get-fields/target/${this.connectorTargetIdValue.toString()}/module/${targetModuleId.toString()}`)
+            .then(response => response.text())
+            .then((html) => {
+                this.targetHtmlOutput.innerHTML = html;
+                // this.moreFieldsSection.append(this.targetHtmlOutput);
+            })
+            .catch(function(err) {
+                console.log('Failed to fetch response: ', err);
+            });
+    }
+
+    async addMoreFields(event) {
+        // this.dispatch('myevent');
+        event.preventDefault();
+        const sourceModuleId = document.querySelector('[data-rule-source-module-id-value]');
+        const promisesResults = [
+             this.loadMoreSourceFields(Number(sourceModuleId.getAttribute('data-rule-source-module-id-value'))),
+             this.loadMoreTargetFields(this.targetModuleIdValue)
+        ];
+        await Promise.allSettled(promisesResults).then((response) =>{
+            console.log(response);
+            const target = this.hasMoreTarget ? this.moreTarget : this.element;
+            console.log(this.sourceHtmlOutput);
+            console.log(this.targetHtmlOutput);
+            // target.insertAdjacentHTML('afterend', this.sourceHtmlOutput);
+            // console.log(target);
+            // console.log(this.moreFieldsSection);
+            // target.innerHTML  = this.moreFieldsSection;
+            // target.appendChild(this.moreFieldsSection);
+
+            // target.parentNode.append(this.sourceHtmlOutput);
+            // const newSourceDiv = target.lastChild.after(this.sourceHtmlOutput);
+            // newSourceDiv.lastChild.after(this.targetHtmlOutput);
+
+            let p = new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve(target.lastChild.after(this.sourceHtmlOutput));
+                }, 2 * 100);
+            });
+            p.then((result) => {
+                result = target.lastChild
+                console.log(result);
+                // return result * 2;
+            }).then((result) => {
+                result = target.lastChild;
+                result.lastChild.after(this.targetHtmlOutput)
+                console.log(result);
+
+                this.appendButton(result);
+
+                // return result * 3;
+            });
+            // target.appendChild(this.sourceHtmlOutput);
+            // this.element.appendChild(target);  // error : the new child is an ancestor of the parent
+            // this.element.append(this.moreFieldsSection);
+            // target.after(this.targetHtmlOutput);
+            // this.appendButton(this.moreFieldsSection);
+            // this.appendButton(target.parentNode);
+            // this.appendButton(target);
+
+        // }).then((res) => {
+        //     console.log(res);
+            // target.after(this.targetHtmlOutput);
+            // // this.appendButton(this.moreFieldsSection);
+            // this.appendButton(target);
+        }).catch(function(err) {
+            console.log('Failed to fetch response: ', err);
+        });
+    }
+
+    // async refreshContent(event) {
+    //     const target = this.hasContentTarget ? this.contentTarget : this.element;
+    //
+    //     target.style.opacity = .5;
+    //     const response = await fetch(this.urlValue);
+    //     target.innerHTML = await response.text();
+    //     target.style.opacity = 1;
+    // }
 }
