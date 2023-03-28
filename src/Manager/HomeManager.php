@@ -59,6 +59,7 @@ class HomeManager
         try {
             $historic = [];
             // Start date
+            $startDateOri = date('Y-m-d', strtotime('-'.self::historicDays.' days'));
             $startDate = date('Y-m-d', strtotime('-'.self::historicDays.' days'));
             // End date
             $endDate = date('Y-m-d');
@@ -69,11 +70,26 @@ class HomeManager
                 $historic[$startDate] = ['date' => $startDateFormat, 'open' => 0, 'error' => 0, 'cancel' => 0, 'close' => 0];
             }
 
+            // Stop using doctrine for performance reasons
             // Select the number of transfers per day
-            $result = $this->documentRepository->countTransferHisto($user);
+            // $result = $this->documentRepository->countTransferHisto($user);
+			$sqlParams = "	SELECT
+								DATE_FORMAT(d.date_modified, '%Y-%m-%d') AS date,
+								d.global_status,
+								COUNT(d.id) AS nb
+							FROM document d
+							WHERE
+									d.deleted = 0
+								AND d.date_modified >= :date_modified
+							group By date, d.global_status
+						";
+            $stmt = $this->connection->prepare($sqlParams);
+            $stmt->bindValue(':date_modified', $startDateOri);
+            $result = $stmt->executeQuery();
+            $result = $result->fetchAllAssociative();
             if (!empty($result)) {
                 foreach ($result as $row) {
-                    $historic[$row['date']][strtolower($row['globalStatus'])] = $row['nb'];
+                    $historic[$row['date']][strtolower($row['global_status'])] = $row['nb'];
                 }
             }
         } catch (\Exception $e) {
@@ -81,5 +97,44 @@ class HomeManager
         }
 
         return $historic;
+    }
+	
+	public function countTransferRule(): array
+    {
+        try {
+			$countTransferRule = array();
+			$startDate = date('Y-m-d', strtotime('-'.self::historicDays.' days'));
+            $sqlParams = "	SELECT 
+								data.nb,
+								rule.name
+							FROM (
+								SELECT 
+									COUNT(document.id) as nb, 
+									document.rule_id
+								FROM document
+								WHERE 
+									document.global_status = :close
+								AND document.date_modified > :date_modified
+								GROUP BY document.rule_id
+							) data
+								INNER JOIN rule    
+									on data.rule_id = rule.id";
+            $stmt = $this->connection->prepare($sqlParams);
+			$stmt->bindValue(':date_modified', $startDate);
+			$stmt->bindValue(':close', 'Close');
+            $result = $stmt->executeQuery();
+            $values = $result->fetchAllAssociative();
+
+            if (count($values)) {
+				$countTransferRule[] = ['rule', 'value'];
+                foreach ($values as $value) {
+                    $countTransferRule[] = [$value['name'], (int) $value['nb']];
+                }
+            } 
+        } catch (\Exception $e) {
+            $this->logger->error('Error : '.$e->getMessage().' '.$e->getFile().' Line : ( '.$e->getLine().' )');
+        }
+
+        return $countTransferRule;
     }
 }

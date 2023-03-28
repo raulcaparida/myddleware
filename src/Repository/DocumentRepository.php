@@ -158,13 +158,15 @@ class DocumentRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('d')
             ->select('COUNT(d) as nb, d.globalStatus as global_status')
             ->andWhere('d.deleted = 0')
+			->andWhere('d.dateModified > :dateStart')
+            ->setParameter('dateStart', '2023-03-21') 
             ->groupBy('d.globalStatus')
             ->orderBy('nb', 'DESC');
 
-        if ($user && !$user->isAdmin()) {
-            $qb->andWhere('d.createdBy = :user')
-                ->setParameter('user', $user);
-        }
+        // if ($user && !$user->isAdmin()) {
+            // $qb->andWhere('d.createdBy = :user')
+                // ->setParameter('user', $user);
+        // }
 
         return $qb->getQuery()->getResult();
     }
@@ -177,13 +179,15 @@ class DocumentRepository extends ServiceEntityRepository
             ->andWhere('d.deleted = 0')
             ->andWhere('d.globalStatus = :close')
             ->setParameter('close', 'Close')
+			->andWhere('d.dateModified > :dateStart')
+            ->setParameter('dateStart', '2023-03-21') 
             ->groupBy('rule.name')
             ->orderBy('nb', 'DESC');
 
-        if ($user && !$user->isAdmin()) {
-            $qb->andWhere('d.createdBy = :user')
-                ->setParameter('user', $user);
-        }
+        // if ($user && !$user->isAdmin()) {
+            // $qb->andWhere('d.createdBy = :user')
+                // ->setParameter('user', $user);
+        // }
 
         return $qb->getQuery()->getResult();
     }

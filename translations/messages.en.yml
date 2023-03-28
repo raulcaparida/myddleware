@@ -27,9 +27,9 @@ panel:
         title: Start by connecting these applications
         click: Click to see how to create this connector.
     graph_tranfer_rule:
-        desc: Documents sent by rule
+        desc: Documents sent by rule (last 7 days)
     graph_error:
-        title: Number of documents by status
+        title: Number of documents by status (last 7 days) - Total documents : 
     list_error:
         nb: Number of errors by rule
     list_job:

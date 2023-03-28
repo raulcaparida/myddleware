@@ -176,7 +176,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
                     'page' => $page,
                 ]);
 
-
                 // Si tout se passe bien dans la pagination
                 if ($compact) {
                     // Si aucune règle
@@ -2443,14 +2442,13 @@ use Symfony\Contracts\Translation\TranslatorInterface;
                     $lstArray[] = $s->getName();
                 }
             }
-
-            /** @var User $user */
-            $user = $this->getUser();
-            $nbFlux = 0;
-            $listFlux = $this->documentRepository->countTypeDoc($user);
-            foreach ($listFlux as $field => $value) {
-                $nbFlux = $nbFlux + (int) $value['nb'];
-            }
+			
+			// Get all documents
+			$sqlParams = "SELECT COUNT(id) AS nb FROM document";
+            $stmt = $this->entityManager->getConnection()->prepare($sqlParams);
+            $result = $stmt->executeQuery();
+            $listFlux = $result->fetchAssociative();
+			$nbFlux = $listFlux['nb'];
 
             return $this->render('Home/index.html.twig', [
                 'errorByRule' => $this->ruleRepository->errorByRule($user),
@@ -2474,7 +2472,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
                 foreach ($documents as $value) {
                     $countTypeDoc[] = [$value['global_status'], (int) $value['nb']];
                 }
-            }
+            } 
 
             return $this->json($countTypeDoc);
         }
@@ -2485,14 +2483,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
         public function graphTransferRule(): Response
         {
             $countTransferRule = [];
-            $values = $this->documentRepository->countTransferRule($this->getUser());
-            if (count($values)) {
-                $countTransferRule[] = ['test', 'test2'];
-                foreach ($values as $value) {
-                    $countTransferRule[] = [$value['name'], (int) $value['nb']];
-                }
-            }
-
+			$countTransferRule = $this->home->countTransferRule($this->getUser());
             return $this->json($countTransferRule);
         }
 
@@ -2520,8 +2511,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
                         (int) $value['close'],
                     ];
                 }
-            }
-
+            } 
             return $this->json($countTransferRule);
         }
 
@@ -2531,7 +2521,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
         public function graphJobHisto(): Response
         {
             $countTransferRule = [];
-            $jobs = $this->jobRepository->findBy([], ['begin' => 'ASC'], 5);
+            $jobs = $this->jobRepository->findBy([], ['begin' => 'DESC'], 5);
             if (count($jobs)) {
                 $countTransferRule[] = [
                     'date',
@@ -2540,7 +2530,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
                     $this->translator->trans('flux.gbl_status.cancel'),
                     $this->translator->trans('flux.gbl_status.close'),
                 ];
-                foreach ($jobs as $job) {
+                foreach (array_reverse($jobs) as $job) {
                     $countTransferRule[] = [
                         $job->getBegin()->format('d/m/Y H:i:s'),
                         (int) $job->getOpen(),

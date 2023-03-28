@@ -27,9 +27,9 @@ panel:
         title: Connectez dès à présent ces différentes solutions
         click: Cliquez pour savoir comment créer ce connecteur.
     graph_tranfer_rule:
-        desc: Documents envoyés par règle
+        desc: Documents envoyés par règle (7 derniers jours)
     graph_error:
-        title: Nombre de documents par statut
+        title: Nombre de documents par statut (7 derniers jours) - Total documents : 
     list_error:
         nb: Nombre d'erreurs par règle
     list_job:
