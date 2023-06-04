@@ -37,16 +37,11 @@ class hubspotcore extends solution
         'contacts' => array('email')
     );
 	
-	// protected array $endpointName = array(
-        // 'companies' => 'Companies',
-        // 'contacts' => 'Contacts',
-        // 'deals' => 'Deals',
-    // );
-
     // Requiered fields for each modules
     protected array $required_fields = array(
         'default' => ['lastmodifieddate'],
         'companies' => ['hs_lastmodifieddate'],
+        'deals' => ['hs_lastmodifieddate'],
     );
 
     public function getFieldsLogin(): array
@@ -133,6 +128,98 @@ class hubspotcore extends solution
             return ['error' => $error];
         }
     }
+
+    public function read($param)
+    {
+        try {
+            // Initialize result and parameters
+            $result = array();
+            $nbRecords = 0;
+            $apiCallLimit = ($param['limit'] < $this->apiCallLimit ? $param['limit'] : $this->apiCallLimit);
+
+            $after = 0;
+            $filter = $this->getFilterObject($param['module']);
+            $dateRef = $this->dateTimeFromMyddleware($param['date_ref']);
+            $dateRefField = $this->getRefFieldName($param);
+
+            // Set the filter 
+            if (!empty($param['query'])) {
+                foreach($param['query'] as $key=>$value) {
+                    $filter->setOperator('EQ')
+                            ->setPropertyName($key)
+                            ->setValue($value);
+                }
+            } elseif (!empty($param['date_ref'])) {
+                $filter->setOperator('GT')
+                        ->setPropertyName($dateRefField)
+                        ->setValue($dateRef);
+            }
+            $filterGroup = $this->getFilterGroupObject($param['module']);
+            $filterGroup->setFilters([$filter]);
+			$searchRequest = $this->getSearchRequestObject($param['module']);
+            $searchRequest->setFilterGroups([$filterGroup]);
+
+            // Always sort by last modified date ascending
+            $sorts = array(
+                        array(
+                            'propertyName' => $dateRefField,
+                            'direction' => 'ASCENDING',
+                         ),
+                    );
+            $searchRequest->setSorts($sorts);
+            // Set the limit and the offset
+            $searchRequest->setLimit($apiCallLimit);
+
+            // Set the fields requested
+            $searchRequest->setProperties($param['fields']);
+
+            do {
+                // Manage offset
+                $searchRequest->setAfter($after);
+
+                // Search records from Hubspot
+                if (!empty($param['query']['id'])) {
+                    $records[0] = $this->getRecordById($param);
+                } else {
+                    $recordList = $this->getRecords($param, $searchRequest);
+                    $records = $recordList->getResults();        
+                }
+                // Format results
+                if (!empty($records)) {
+                    foreach($records as $record) {
+                        // Stop the process if limit has been reached
+                        if ($param['limit'] <= $nbRecords) {
+                            break;
+                        }
+                        $recordValues = $record->getProperties();
+                        $recordId = $record->getId();
+                        $result[$recordId]['id'] = $recordId;
+                        // Fill every rule fields
+                        foreach($param['fields'] as $field) {
+                            $result[$recordId][$field] = $recordValues[$field] ?? null;
+                        }
+                        $nbRecords++;
+                    }
+                }
+                // No pagination for search by id (only 1 result)
+                if (!empty($param['query']['id'])) {
+                    break;
+                }
+                if (!is_null($recordList->getPaging())) {
+                    $after = $recordList->getPaging()->getNext()->getAfter();
+                }
+            // Stop if no result or if the rule limit has been reached
+            } while (
+                    is_object($recordList) 
+                AND $recordList->getPaging()
+                AND $param['limit'] > $nbRecords
+            );
+        } catch (\Exception $e) {
+            throw new \Exception('Error : '.$e->getMessage().' '.__CLASS__.' Line : ( '.$e->getLine().' )');
+        }
+        return $result;
+    }
+
 	
 	// Get Hubspot filter object depending on the module
 	protected function getFilterObject($module) {
@@ -202,106 +289,13 @@ class hubspotcore extends solution
 		}
 	}
 	
-    public function read($param)
-    {
-        try {
-            // Initialize result and parameters
-            $result = array();
-            $nbRecords = 0;
-            $apiCallLimit = ($param['limit'] < $this->apiCallLimit ? $param['limit'] : $this->apiCallLimit);
-
-            $after = 0;
-            $filter = $this->getFilterObject($param['module']);
-            $dateRef = $this->dateTimeFromMyddleware($param['date_ref']);
-            $dateRefField = $this->getRefFieldName($param);
-
-            // Set the filter 
-            if (!empty($param['query'])) {
-                foreach($param['query'] as $key=>$value) {
-                    $filter->setOperator('EQ')
-                            ->setPropertyName($key)
-                            ->setValue($value);
-                }
-            } elseif (!empty($param['date_ref'])) {
-                $filter->setOperator('GT')
-                        ->setPropertyName($dateRefField)
-                        ->setValue($dateRef);
-            }
-            $filterGroup = $this->getFilterGroupObject($param['module']);
-            $filterGroup->setFilters([$filter]);
-			$searchRequest = $this->getSearchRequestObject($param['module']);
-            $searchRequest->setFilterGroups([$filterGroup]);
-
-            // Always sort by last modified date ascending
-            $sorts = array(
-                        array(
-                            'propertyName' => $dateRefField,
-                            'direction' => 'ASCENDING',
-                         ),
-                    );
-            $searchRequest->setSorts($sorts);
-            // Set the limit and the offset
-            $searchRequest->setLimit($apiCallLimit);
-
-            // Set the fields requested
-            $searchRequest->setProperties($param['fields']);
-
-            do {
-                // Manage offset
-                $searchRequest->setAfter($after);
-
-                // Search records from Hubspot
-                if (!empty($param['query']['id'])) {
-                    $records[0] = $this->getRecordById($param);
-                } else {
-echo 'a'.chr(10);
-                    $recordList = $this->getRecords($param, $searchRequest);
-echo 'a'.chr(10);
-                    $records = $recordList->getResults();
-print_r($records);         
-                }
-                // Format results
-                if (!empty($records)) {
-                    foreach($records as $record) {
-                        // Stop the process if limit has been reached
-                        if ($param['limit'] <= $nbRecords) {
-                            break;
-                        }
-                        $recordValues = $record->getProperties();
-                        $recordId = $record->getId();
-                        $result[$recordId]['id'] = $recordId;
-                        // Fill every rule fields
-                        foreach($param['fields'] as $field) {
-                            $result[$recordId][$field] = $recordValues[$field] ?? null;
-                        }
-                        $nbRecords++;
-                    }
-                }
-                // No pagination for search by id (only 1 result)
-                if (!empty($param['query']['id'])) {
-                    break;
-                }
-                if (!is_null($recordList->getPaging())) {
-                    $after = $recordList->getPaging()->getNext()->getAfter();
-                }
-            // Stop if no result or if the rule limit has been reached
-            } while (
-                    is_object($recordList) 
-                AND $recordList->getPaging()
-                AND $param['limit'] > $nbRecords
-            );
-        } catch (\Exception $e) {
-            throw new \Exception('Error : '.$e->getMessage().' '.__CLASS__.' Line : ( '.$e->getLine().' )');
-        }
-        return $result;
-    }
 
      /**
      * @throws \Exception
      */
     public function getRefFieldName($param): string
     {
-        if ($param['module'] == 'companies') {
+        if (in_array($param['module'], array('companies','deals'))) {
             return 'hs_lastmodifieddate'; 
         }
         return 'lastmodifieddate';
