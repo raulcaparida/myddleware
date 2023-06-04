@@ -36,10 +36,17 @@ class hubspotcore extends solution
     protected array $FieldsDuplicate = array(
         'contacts' => array('email')
     );
+	
+	// protected array $endpointName = array(
+        // 'companies' => 'Companies',
+        // 'contacts' => 'Contacts',
+        // 'deals' => 'Deals',
+    // );
 
     // Requiered fields for each modules
     protected array $required_fields = array(
         'default' => ['lastmodifieddate'],
+        'companies' => ['hs_lastmodifieddate'],
     );
 
     public function getFieldsLogin(): array
@@ -74,7 +81,9 @@ class hubspotcore extends solution
     public function get_modules($type = 'source'): array
     {
         $modules = array(
-            'contacts' => 'Contacts'
+            'companies' => 'Companies',
+            'contacts' => 'Contacts',
+            'deals' => 'Deals'
         );
         return $modules;
     }
@@ -84,7 +93,7 @@ class hubspotcore extends solution
     {
         parent::get_module_fields($module, $type);
         try {
-            $properties = $this->hubspot->crm()->properties()->coreApi()->getAll('contacts')->getResults();
+            $properties = $this->hubspot->crm()->properties()->coreApi()->getAll($module)->getResults();
             if (!empty($properties)){
                 foreach($properties as $property) {
                     // List value
@@ -124,7 +133,75 @@ class hubspotcore extends solution
             return ['error' => $error];
         }
     }
+	
+	// Get Hubspot filter object depending on the module
+	protected function getFilterObject($module) {
+		switch ($module) {
+			case 'contacts':
+				return new \HubSpot\Client\Crm\Contacts\Model\Filter();
+			case 'companies':
+				return new \HubSpot\Client\Crm\Companies\Model\Filter();
+			case 'deals':
+				return new \HubSpot\Client\Crm\Deals\Model\Filter();
+			default: 
+				throw new \Exception('No filter found for the module '.$module);
+		}
+	}
+	
+	// Get Hubspot FilterGroup object depending on the module
+	protected function getFilterGroupObject($module) {
+		switch ($module) {
+			case 'contacts':
+				return new \HubSpot\Client\Crm\Contacts\Model\FilterGroup();
+			case 'companies':
+				return new \HubSpot\Client\Crm\Companies\Model\FilterGroup();
+			case 'deals':
+				return new \HubSpot\Client\Crm\Deals\Model\FilterGroup();
+			default: 
+				throw new \Exception('No filter group found for the module '.$module);
+		}
+	}
+	
+	// Get Hubspot filter object depending on the module
+	protected function getSearchRequestObject($module) {
+		switch ($module) {
+			case 'contacts':
+				return new \HubSpot\Client\Crm\Contacts\Model\PublicObjectSearchRequest();
+			case 'companies':
+				return new \HubSpot\Client\Crm\Companies\Model\PublicObjectSearchRequest();
+			case 'deals':
+				return new \HubSpot\Client\Crm\Deals\Model\PublicObjectSearchRequest();
+			default: 
+				throw new \Exception('Nosearch request object found for the module '.$module);
+		}
+	}
 
+	protected function getRecordById($param) {
+		switch ($param['module']) {
+			case 'contacts':
+				return $this->hubspot->crm()->Contacts()->basicApi()->getById($param['query']['id']);
+			case 'companies':
+				return $this->hubspot->crm()->Companies()->basicApi()->getById($param['query']['id']);
+			case 'deals':
+				return $this->hubspot->crm()->Deals()->basicApi()->getById($param['query']['id']);
+			default: 
+				throw new \Exception('No getRecordById function found for the module '.$param['module']);
+		}
+	}
+
+	protected function getRecords($param, $searchRequest) {
+		switch ($param['module']) {
+			case 'contacts':
+				return $this->hubspot->crm()->Contacts()->searchApi()->doSearch($searchRequest);
+			case 'companies':
+				return $this->hubspot->crm()->Companies()->searchApi()->doSearch($searchRequest);
+			case 'deals':
+				return $this->hubspot->crm()->Deals()->searchApi()->doSearch($searchRequest);
+			default: 
+				throw new \Exception('No getRecordById function found for the module '.$param['module']);
+		}
+	}
+	
     public function read($param)
     {
         try {
@@ -134,8 +211,9 @@ class hubspotcore extends solution
             $apiCallLimit = ($param['limit'] < $this->apiCallLimit ? $param['limit'] : $this->apiCallLimit);
 
             $after = 0;
-            $filter = new \HubSpot\Client\Crm\Contacts\Model\Filter();
+            $filter = $this->getFilterObject($param['module']);
             $dateRef = $this->dateTimeFromMyddleware($param['date_ref']);
+            $dateRefField = $this->getRefFieldName($param);
 
             // Set the filter 
             if (!empty($param['query'])) {
@@ -146,18 +224,18 @@ class hubspotcore extends solution
                 }
             } elseif (!empty($param['date_ref'])) {
                 $filter->setOperator('GT')
-                        ->setPropertyName('lastmodifieddate')
+                        ->setPropertyName($dateRefField)
                         ->setValue($dateRef);
             }
-            $filterGroup = new \HubSpot\Client\Crm\Contacts\Model\FilterGroup();
+            $filterGroup = $this->getFilterGroupObject($param['module']);
             $filterGroup->setFilters([$filter]);
-            $searchRequest = new \HubSpot\Client\Crm\Contacts\Model\PublicObjectSearchRequest();
+			$searchRequest = $this->getSearchRequestObject($param['module']);
             $searchRequest->setFilterGroups([$filterGroup]);
 
             // Always sort by last modified date ascending
             $sorts = array(
                         array(
-                            'propertyName' => 'lastmodifieddate',
+                            'propertyName' => $dateRefField,
                             'direction' => 'ASCENDING',
                          ),
                     );
@@ -174,12 +252,14 @@ class hubspotcore extends solution
 
                 // Search records from Hubspot
                 if (!empty($param['query']['id'])) {
-                    $records[0] = $this->hubspot->crm()->contacts()->basicApi()->getById($param['query']['id']);
+                    $records[0] = $this->getRecordById($param);
                 } else {
-                    $recordList = $this->hubspot->crm()->contacts()->searchApi()->doSearch($searchRequest);
+echo 'a'.chr(10);
+                    $recordList = $this->getRecords($param, $searchRequest);
+echo 'a'.chr(10);
                     $records = $recordList->getResults();
+print_r($records);         
                 }
-                
                 // Format results
                 if (!empty($records)) {
                     foreach($records as $record) {
@@ -211,7 +291,7 @@ class hubspotcore extends solution
                 AND $param['limit'] > $nbRecords
             );
         } catch (\Exception $e) {
-            $result['error'] = 'Error : '.$e->getMessage().' '.__CLASS__.' Line : ( '.$e->getLine().' )';
+            throw new \Exception('Error : '.$e->getMessage().' '.__CLASS__.' Line : ( '.$e->getLine().' )');
         }
         return $result;
     }
@@ -221,6 +301,9 @@ class hubspotcore extends solution
      */
     public function getRefFieldName($param): string
     {
+        if ($param['module'] == 'companies') {
+            return 'hs_lastmodifieddate'; 
+        }
         return 'lastmodifieddate';
     }
 
