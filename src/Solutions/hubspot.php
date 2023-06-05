@@ -44,6 +44,33 @@ class hubspotcore extends solution
         'deals' => ['hs_lastmodifieddate'],
     );
 
+    protected array $associationIds = array(
+        1 => 'Contact to company',
+        2 => 'Company to contact',
+        3 => 'Deal to contact',
+        4 => 'Contact to deal',
+        5 => 'Deal to company',
+        6 => 'Company to deal',
+        // 7 => 'Company to engagement',
+        // 8 => 'Engagement to company',
+        // 9 => 'Contact to engagement',
+        // 10 => 'Engagement to contact',
+        // 11 => 'Deal to engagement',
+        // 12 => 'Engagement to deal',
+        13 => 'Parent company to child company',
+        14 => 'Child company to parent company',
+        // 15 => 'Contact to ticket',
+        // 16 => 'Ticket to contact',
+        // 17 => 'Ticket to engagement',
+        // 18 => 'Engagement to ticket',
+        19 => 'Deal to line item',
+        20 => 'Line item to deal',
+        // 25 => 'Company to ticket',
+        // 26 => 'Ticket to company',
+        // 27 => 'Deal to ticket',
+        // 28 => 'Ticket to deal',
+    );
+
     public function getFieldsLogin(): array
     {
         return [
@@ -63,10 +90,6 @@ class hubspotcore extends solution
             $this->hubspot = \HubSpot\Factory::createWithAccessToken($this->paramConnexion['accesstoken']);
             // Call the standard API. OK if no exception.
             $response = $this->hubspot->crm()->contacts()->basicApi()->getPage();
-    echo 'A'.chr(10);
-            $properties = $this->hubspot->crm()->properties()->coreApi()->getAll('associations')->getResults();
-            print_r($properties);
-throw new \Exception('test');
             $this->connexion_valide = true;
         } catch (\Exception $e) {
             $error = $e->getMessage().' '.$e->getFile().' Line : ( '.$e->getLine().' )';
@@ -74,7 +97,6 @@ throw new \Exception('test');
             return ['error' => $error];
         }
     }
-
 
     public function get_modules($type = 'source'): array
     {
@@ -85,9 +107,9 @@ throw new \Exception('test');
             'products' => 'Products',
             'line_items' => 'Line items',
         );
-
-
-        
+        if ($type == 'target') {
+            $modules = array_merge($modules, $this->associationIds);
+        }
         return $modules;
     }
 
@@ -96,6 +118,25 @@ throw new \Exception('test');
     {
         parent::get_module_fields($module, $type);
         try {
+            // In case of relationship
+            if (is_numeric($module)) {
+                $this->moduleFields['fromObjectId'] = array(
+                    'label' => 'From object ID',
+                    'type' => 'varchar(255)',
+                    'type_bdd' => 'varchar(255)',
+                    'required' => false,
+                    'relate' => true,
+                );
+                $this->moduleFields['toObjectId'] = array(
+                    'label' => 'To object ID',
+                    'type' => 'varchar(255)',
+                    'type_bdd' => 'varchar(255)',
+                    'required' => false,
+                    'relate' => true,
+                );
+                return $this->moduleFields;
+            }
+            // For the other module, we call the API to get the field list
             $properties = $this->hubspot->crm()->properties()->coreApi()->getAll($module)->getResults();
             if (!empty($properties)){
                 foreach($properties as $property) {
@@ -228,52 +269,72 @@ throw new \Exception('test');
     }
 
     // Create a record into Hubspot
-    protected function create($param, $record, $idDoc = null): ?int
+    protected function create($param, $record, $idDoc = null)
     {    
 		try {
+            if(is_numeric($param['module'])) {
+                return $this->createAssociation($param, $record, $idDoc);
+            }
             switch ($param['module']) {
                 case 'companies':
-                    $SimplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Companies\Model\SimplePublicObjectInput();
-                    $SimplePublicObjectInputForCreate->setProperties($record);
-                    $apiResponse = $this->hubspot->crm()->companies()->basicApi()->create($SimplePublicObjectInputForCreate);
+                    $simplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Companies\Model\SimplePublicObjectInput();
+                    $simplePublicObjectInputForCreate->setProperties($record);
+                    $apiResponse = $this->hubspot->crm()->companies()->basicApi()->create($simplePublicObjectInputForCreate);
                     break;
                 case 'contacts':
-                    $SimplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput();
-                    $SimplePublicObjectInputForCreate->setProperties($record);
-                    $apiResponse = $this->hubspot->crm()->contacts()->basicApi()->create($SimplePublicObjectInputForCreate);
+                    $simplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput();
+                    $simplePublicObjectInputForCreate->setProperties($record);
+                    $apiResponse = $this->hubspot->crm()->contacts()->basicApi()->create($simplePublicObjectInputForCreate);
                     break;
                 case 'deals':
-                    $SimplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Deals\Model\SimplePublicObjectInput();
-                    $SimplePublicObjectInputForCreate->setProperties($record);
-                    $apiResponse = $this->hubspot->crm()->deals()->basicApi()->create($SimplePublicObjectInputForCreate);
+                    $simplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Deals\Model\SimplePublicObjectInput();
+                    $simplePublicObjectInputForCreate->setProperties($record);
+                    $apiResponse = $this->hubspot->crm()->deals()->basicApi()->create($simplePublicObjectInputForCreate);
                     break;
                 case 'products':
-                    $SimplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Products\Model\SimplePublicObjectInput();
-                    $SimplePublicObjectInputForCreate->setProperties($record);
-                    $apiResponse = $this->hubspot->crm()->products()->basicApi()->create($SimplePublicObjectInputForCreate);
+                    $simplePublicObjectInputForCreate = new \HubSpot\Client\Crm\Products\Model\SimplePublicObjectInput();
+                    $simplePublicObjectInputForCreate->setProperties($record);
+                    $apiResponse = $this->hubspot->crm()->products()->basicApi()->create($simplePublicObjectInputForCreate);
                     break;
                 case 'line_items':
-                    $SimplePublicObjectInputForCreate = new \HubSpot\Client\Crm\LineItems\Model\SimplePublicObjectInput();
-                    $SimplePublicObjectInputForCreate->setProperties($record);
-                    $apiResponse = $this->hubspot->crm()->line_items()->basicApi()->create($SimplePublicObjectInputForCreate);
+                    $simplePublicObjectInputForCreate = new \HubSpot\Client\Crm\LineItems\Model\SimplePublicObjectInput();
+                    $simplePublicObjectInputForCreate->setProperties($record);
+                    $apiResponse = $this->hubspot->crm()->line_items()->basicApi()->create($simplePublicObjectInputForCreate);
                     break;
                 default: 
                     throw new \Exception('No ceate function found for the module '.$param['module']);
             }
 		} catch (\Exception $e) {
+            echo 'Exception when calling create function: '.$e->getMessage();
             throw new \Exception('Exception when calling create function: '.$e->getMessage());
         }
 		return $apiResponse->getId();
     }
 
+    // Create association
+    protected function createAssociation($param, $record, $idDoc)
+    {
+        switch ($param['module']) {
+            case 3: // Deal to contact
+                $apiResponse = $this->hubspot->crm()->deals()->associationsApi()->create($record['fromObjectId'], 'contacts', $record['toObjectId'], $param['module']);
+                break;       
+            default: 
+                throw new \Exception('Relationship '.$param['module'].' not managed.');
+        }
+
+        if (!empty($apiResponse->getId())) {
+            return $record['fromObjectId'].'_'.$record['toObjectId'];
+        }
+    }
+    
     // Update a record into Hubspot
-    protected function update($param, $record, $idDoc = null): ?int
+    protected function update($param, $record, $idDoc = null)
     {    
 		try {
             // Get the target ID and remove it from the record data 
             $recordId = $record['target_id'];
             unset($record['target_id']);
-print_r($record);
+
             switch ($param['module']) {
                 case 'companies':
                     $SimplePublicObjectInputForUpdate = new \HubSpot\Client\Crm\Companies\Model\SimplePublicObjectInput();
@@ -306,7 +367,6 @@ print_r($record);
 		} catch (\Exception $e) {
             throw new \Exception('Exception when calling update function: '.$e->getMessage());
         }
-print_r($apiResponse);
 		return $apiResponse->getId();
     }
 	
@@ -398,7 +458,18 @@ print_r($apiResponse);
 				throw new \Exception('No getRecordById function found for the module '.$param['module']);
 		}
 	}
-	
+
+    public function getRuleMode($module, $type): array
+    {
+        // Create only for association's modules
+        if (
+                $type == 'target'
+            AND is_numeric($module)
+        ) { 
+            return array('C' => 'create_only');
+        }
+        return parent::getRuleMode($module, $type);
+    }
 
      /**
      * @throws \Exception
