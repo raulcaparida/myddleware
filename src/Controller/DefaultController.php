@@ -1500,6 +1500,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
                 // Récupère la liste des champs cible
                 $ruleFieldsTarget = $solution_cible->get_module_fields($module['cible'], 'target');
+                if (!empty( $ruleFieldsTarget['error'])) {
+                    throw new Exception($ruleFieldsTarget['error']);
+                }
 
                 // Récupération de tous les modes de règle possibles pour la cible et la source
                 $targetMode = $solution_cible->getRuleMode($module['cible'], 'target');
@@ -1543,6 +1546,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
                 // Récupère la liste des champs source
                 $ruleFieldsSource = $solution_source->get_module_fields($module['source'], 'source', $param);
+                if (!empty( $ruleFieldsSource['error'])) {
+                    throw new Exception($ruleFieldsSource['error']);
+                }
 
                 if ($ruleFieldsSource) {
                     $this->sessionService->setParamRuleSourceFields($ruleKey, $ruleFieldsSource);
