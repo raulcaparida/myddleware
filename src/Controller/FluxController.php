@@ -931,6 +931,25 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
         }
     }
 
+    // function that runs the fluxCancel action for multiple documents by an array of ids
+
+    /**
+     * @Route("/flux/historycancel/{ids}", name="flux_history_cancel")
+     */
+    public function historyCancel($ids): RedirectResponse
+    {
+        try {
+            if (!empty($ids)) {
+                // runs the fluxCancel action for each id in the array
+                $this->jobManager->actionMassTransfer('cancel', 'document', explode(',', $ids));
+            }
+
+            return $this->redirect($this->generateURL('flux_list', ['search' => 1]));
+        } catch (Exception $e) {
+            return $this->redirect($this->generateUrl('flux_list', ['search' => 1]));
+        }
+    }
+
     /**
      * @Route("/flux/readrecord/{id}", name="flux_readrecord")
      */

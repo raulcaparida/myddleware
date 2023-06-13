@@ -65,6 +65,12 @@
 							</button>
 						</a>
 					{% endif %}
+					{# Button to cancel every document in the history of this document #}
+					<a class="btn_action_cancel_history" href="{{ path('flux_history_cancel',{'ids' : history_documents|map(doc => doc.id)|join(',') }) }}" title="{{'view_flux.btn.cancel'|trans}}">
+							<button type="button" class="btn btn-outline-warning">
+								{{'view_flux.btn.cancel'|trans}}
+							</button>
+						</a>
 					{% if read_record_btn %}
 						<a class="btn_action_loading" href="{{ path('flux_readrecord',{'id' : doc.getId }) }}" title="{{'view_flux.btn.readrecord'|trans}}">
 							<button type="button" class="btn btn-primary">
