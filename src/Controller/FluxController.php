@@ -56,6 +56,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Doctrine\Common\Collections\Criteria;
 
 /**
  * @Route("/rule")
@@ -697,6 +698,20 @@ public function fluxInfo(Request $request, $id, $page, $logPage)
             // HISTORY DOCUMENT
             // Get the history documents (all document for the same source)
             $historyDocuments = $em->getRepository(Document::class)->findBy(['source' => $doc[0]->getSource(), 'rule' => $doc[0]->getRule(), 'deleted' => 0], ['dateModified' => 'DESC'], 10);
+
+            // Get the total number of history documents with a status NOT Cancel
+            // Create a criteria with 'status' NOT equal to 'Cancel'
+            $criteria = Criteria::create()
+            ->where(Criteria::expr()->neq('status', 'Cancel'))
+            ->andWhere(Criteria::expr()->eq('source', $doc[0]->getSource()))
+            ->andWhere(Criteria::expr()->eq('rule', $doc[0]->getRule()))
+            ->andWhere(Criteria::expr()->eq('deleted', 0))
+            ->orderBy(['dateModified' => 'DESC'])
+            ->setMaxResults(1000);
+
+            $historyDocumentsTotalNotCancel = $em->getRepository(Document::class)->matching($criteria);
+
+
             // If only one record, the history is the current document, so we remove it => no parent
             if (1 == count($historyDocuments)) {
                 $historyDocuments = [];
@@ -836,6 +851,7 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
                     'nb_parent_documents' => count($parentDocuments),
                     'history_documents' => $documentPagination['entities'],
                     'nb_history_documents' => count($documentPagination['entities']),
+                    'totalhistorynotcancel' => $historyDocumentsTotalNotCancel->count(),
                     'ctm_btn' => $list_btn,
                     'read_record_btn' => $solution_source->getReadRecord(),
                     'timezone' => $timezone,
@@ -1118,7 +1134,7 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
     }
 
 
-    // function that runs the fluxCancel action for multiple documents by an array of ids
+    // function that runs the fluxCancel action for multiple documents by an array of ids, only if user is super admin
 
     /**
      * @Route("/flux/historycancel/{id}", name="flux_history_cancel")
@@ -1126,7 +1142,7 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
     public function historyCancel($id): RedirectResponse
     {
         try {
-            if (!empty($id)) {
+            if (!empty($id) && $this->getUser()->isSuperAdmin()) {
                 // get the current document by id using $id
                 $em = $this->getDoctrine()->getManager();
                 $doc = $em->getRepository(Document::class)->findBy(['id' => $id]);
