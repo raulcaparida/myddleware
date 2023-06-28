@@ -1134,7 +1134,7 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
     }
 
 
-    // function that runs the fluxCancel action for multiple documents by an array of ids, only if user is super admin
+    // Function that runs the fluxCancel action for multiple documents by an array of ids, only if user is super admin
 
     /**
      * @Route("/flux/historycancel/{id}", name="flux_history_cancel")
@@ -1146,11 +1146,6 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
                 // get the current document by id using $id
                 $em = $this->getDoctrine()->getManager();
                 $doc = $em->getRepository(Document::class)->findBy(['id' => $id]);
-                // runs the fluxCancel action for each id in the array
-                // $this->jobManager->actionMassTransfer('cancel', 'document', explode(',', $ids));
-                // get all the documents in the history of the document using the repository and the id
-
-
                 $criteria = Criteria::create()
                     ->where(Criteria::expr()->neq('status', 'Cancel'))
                     ->andWhere(Criteria::expr()->eq('source', $doc[0]->getSource()))
@@ -1160,7 +1155,6 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
                     ->setMaxResults(1000);
 
                 $historyDocumentsTotalNotCancel = $em->getRepository(Document::class)->matching($criteria);
-
 
                 // foreach of the $historyDocuments, run the fluxCancel action
                 foreach ($historyDocumentsTotalNotCancel as $historyDocument) {
