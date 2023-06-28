@@ -398,7 +398,8 @@ view_flux:
     direct_link: Direct link    
     btn:
         reload: Reload the document
-        cancel: Cancel the document 
+        cancel: Cancel the document
+        cancel_history: Cancel all documents in history
         readrecord: Run the same record
     header:
         rule: Rule

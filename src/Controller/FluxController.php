@@ -1117,6 +1117,35 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
         return false;
     }
 
+
+    // function that runs the fluxCancel action for multiple documents by an array of ids
+
+    /**
+     * @Route("/flux/historycancel/{id}", name="flux_history_cancel")
+     */
+    public function historyCancel($id): RedirectResponse
+    {
+        try {
+            if (!empty($id)) {
+                // get the current document by id using $id
+                $em = $this->getDoctrine()->getManager();
+                $doc = $em->getRepository(Document::class)->findBy(['id' => $id]);
+                // runs the fluxCancel action for each id in the array
+                // $this->jobManager->actionMassTransfer('cancel', 'document', explode(',', $ids));
+                // get all the documents in the history of the document using the repository and the id
+                $historyDocuments = $em->getRepository(Document::class)->findBy(['source' => $doc[0]->getSource(), 'rule' => $doc[0]->getRule(), 'deleted' => 0], ['dateModified' => 'DESC'], 1000);
+                // foreach of the $historyDocuments, run the fluxCancel action
+                foreach ($historyDocuments as $historyDocument) {
+                    $this->jobManager->actionMassTransfer('cancel', 'document', [$historyDocument->getId()]);
+                }
+            }
+
+            return $this->redirect($this->generateURL('flux_info_page', ['id' => $id, 'page' => 1, 'logPage' => 1]));
+        } catch (Exception $e) {
+            return $this->redirect($this->generateURL('flux_info_page', ['id' => $id, 'page' => 1, 'logPage' => 1]));
+        }
+    }
+
     // Liste tous les flux d'un type
     private function listeFluxTable($id, $type)
     {
