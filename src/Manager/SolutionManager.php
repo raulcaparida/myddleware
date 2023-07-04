@@ -57,6 +57,7 @@ use App\Solutions\wooeventmanager;
 use App\Solutions\wordpress;
 use App\Solutions\yousign;
 use App\Solutions\zuora;
+use App\Solutions\suitecrm8;
 use Exception;
 
 /**
@@ -97,7 +98,8 @@ class SolutionManager
         airtable $airtable,
         sendinblue $sendinblue,
         internallist $internallist,
-        yousign $yousign
+        yousign $yousign,
+        suitecrm8 $suitecrm8
     ) {
         $this->classes = [
             'wordpress' => $wordpress,
@@ -131,6 +133,7 @@ class SolutionManager
             'sendinblue' => $sendinblue,
             'yousign' => $yousign,
             'internallist' => $internallist,
+            'suitecrm8' => $suitecrm8,
         ];
     }
 
