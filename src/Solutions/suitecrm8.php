@@ -68,33 +68,33 @@ class suitecrm8core extends solution
 
     try {
         $login_parameters = [
+            // 'grant_type' => 'client_credentials',
             'grant_type' => 'password',
             'client_id' => $this->paramConnexion['client_id'],
             'client_secret' => $this->paramConnexion['client_secret'],
             'username' => $this->paramConnexion['login'],
             'password' => $this->paramConnexion['password'],
-            'url' => $this->paramConnexion['url'],
         ];
 
         $this->paramConnexion['url'] = str_replace('index.php', '', $this->paramConnexion['url']);
         $this->paramConnexion['url'] .= '/Api/access_token';  // SuiteCRM v8 access_token endpoint
 
-        // $result = $this->call('POST', $login_parameters, $this->paramConnexion['url']);
-        $result = $this->callDocumentation('GET', $login_parameters, $this->paramConnexion['url']);
+        $result = $this->call('POST', $login_parameters);
+        // $result = $this->callDocumentation('GET', $login_parameters, $this->paramConnexion['url']);
 
-        if (strlen($result) > 3) {
-            throw new \Exception($result);
-        }
+        // if (strlen($result) > 3) {
+        //     throw new \Exception($result);
+        // }
 
         if ($result != false) {
             if (empty($result->access_token)) {
-                throw new \Exception("Authentication failed");
+                throw new \Exception("$result->message");
             }
 
             $this->session = $result->access_token;
             $this->connexion_valide = true;
         } else {
-            throw new \Exception($result);
+            throw new \Exception($result->message);
         }
     } catch (\Exception $e) {
         $error = 'Error : ' . $e->getMessage() . ' ' . $e->getFile() . ' Line : ( ' . $e->getLine() . ' )';
@@ -107,38 +107,38 @@ class suitecrm8core extends solution
 protected function call($method, $parameters)
 {
     try {
-        ob_start();
-        $curl_request = curl_init();
-        curl_setopt($curl_request, CURLOPT_URL, $this->paramConnexion['url']);
-        curl_setopt($curl_request, CURLOPT_POST, 1);
-        curl_setopt($curl_request, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-        curl_setopt($curl_request, CURLOPT_HEADER, 1);
-        curl_setopt($curl_request, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($curl_request, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl_request, CURLOPT_FOLLOWLOCATION, 0);
+        $header = array(
+            'Content-type: application/vnd.api+json',
+            'Accept: application/vnd.api+json',
+         );
+        $postStr = json_encode($parameters);
 
-        curl_setopt($curl_request, CURLOPT_POSTFIELDS, $parameters); // Use the array directly
-        $result = curl_exec($curl_request);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->paramConnexion['url']);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postStr);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        $result = curl_exec($ch);
 
+        //TODO put the error in case of error
         // if $result has a length of more than 3, throw an error
-        if (strlen($result) > 3) {
-            throw new \Exception($result);
-        }
+        // if (strlen($result) > 3) {
+        //     throw new \Exception($result);
+        // }
         
-        curl_close($curl_request);
+        curl_close($ch);
         if (empty($result)) {
             return false;
         }
-        $resultExploded = explode("\r\n\r\n", $result, 2);
-        $response = json_decode($resultExploded[1]);
-        ob_end_flush();
+        $response = json_decode($result);
 
         return $response;
     } catch (\Exception $e) {
-        // return false;
         return new \Exception($result);
     }
 }
+
 
 protected function callDocumentation($method, $parameters)
 {
