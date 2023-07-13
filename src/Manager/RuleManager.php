@@ -1348,6 +1348,35 @@ class rulecore
         return $msg_error;
     }
 
+    // protected function removeFilteredDocuments($documents)
+    protected function removeFilteredDocuments($response)
+    {
+        foreach ($response as $key => $value) {
+            if ($value === -1) {
+                unset($response[$key]);
+            }
+        }
+
+
+        return $response;
+    }
+
+    // Function to verify the state of the response. It will be valid if at least one document valid.
+    // That way if all of the documents fail we can abort the process, but if some succeed, then the failed ones will be logged.
+    public function verifyMultiIdResponseFilter(array $response): bool
+    {
+        $allDocumentsValid = true;
+
+        foreach ($response as $documentState) {
+            if ($documentState === -1) {
+                $allDocumentsValid = false;
+                break;
+            }
+        }
+        return $allDocumentsValid;
+    }
+
+
     // Function to rerun several documents by their ids. The process of creating the document (status: New) is separated from the other statuses (Filter, Predecessor...etc)
     // if we have 5 documents, we will have 5 statuses New then the rest of the operations will happen after that.
     protected function massIdRerun(string $documentIds)
@@ -1388,12 +1417,22 @@ class rulecore
             // On lance des méthodes différentes en fonction du statut en cours du document et en fonction de la réussite ou non de la fonction précédente
         if (in_array($status, ['New', 'Filter_KO'])) {
             $response = $this->filterDocuments($arrayIdDocument);
-            if (true === $this->verifyMultiIdResponse($response)) {
+            if (true === $this->verifyMultiIdResponseFilter($response)) {
                 $msg_success[] = 'Transfer id '.$documentIds.' : Status change => Filter_OK';
                 // Update status if an action has been executed
                 $status = 'Filter_OK';
-            } elseif (-1 == $response[$documentIds]) {
-                $msg_info[] = 'Transfer id '.$documentIds.' : Status change => Filter';
+                // else if among the $response, there is at least one -1, then we 
+            } elseif (in_array(-1, $response)) {
+                $response = $this->removeFilteredDocuments($response);
+
+                // set the $arrayIdDocument to the filtered documents
+                $arrayIdDocument = [];
+                foreach ($response as $key => $value) {
+                    $arrayIdDocument[] = ['id' => $key];
+                }
+
+                $msg_info[] = 'Transfer id '.implode(',', array_keys($response)).' : Status change => Filter';
+                $status = 'Filter_OK';
             } else {
                 // Update status if an action has been executed
                 $status = 'Filter_KO';
