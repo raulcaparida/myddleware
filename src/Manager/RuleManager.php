@@ -1722,17 +1722,19 @@ class rulecore
             // Le type peut-être vide das le cas d'un relancement de flux après une erreur
             if (empty($type)) {
                 foreach($arrayDocumentsIds as $documentId){
-                    $documentData = $this->getDocumentHeader($documentId);
+                    $documentData[] = $this->getDocumentHeader($documentId);
                 }
-                if (!empty($documentData['type'])) {
-                    $type = $documentData['type'];
+                foreach ($documentData as $individualData) {
+                    if (!empty($individualData['type'])) {
+                        $type = $individualData['type'];
+                    }
                 }
             }
 
             foreach($arrayDocumentsIds as $documentId){
                 // $send['data'][$documentId] = $this->getSendDocuments($type, $documentId);
                 $sendDataDocumentArrayElement = $this->getSendDocuments($type, $documentId);
-                $send['data'] = (object) [$documentId => $sendDataDocumentArrayElement[$documentId]];
+                $send['data'][] = (object) [$documentId => $sendDataDocumentArrayElement[$documentId]];
             }
             // Récupération du contenu de la table target pour tous les documents à envoyer à la cible
             $send['module'] = $this->rule['module_target'];
@@ -1757,42 +1759,43 @@ class rulecore
                 // Connexion à la cible
                 $connect = $this->connexionSolution('target');
                 if (true === $connect) {
-                    // Création des données dans la cible
-                    if ('C' == $type) {
-                        // Permet de vérifier que l'on ne va pas créer un doublon dans la cible
-                        $send['data'] = $this->checkDuplicate($send['data']);
-                        $send['data'] = $this->clearSendData($send['data']);
-                        $response = $this->solutionTarget->createData($send);
-                    }
-                    // Modification des données dans la cible
-                    elseif ('U' == $type) {
-                        $send['data'] = $this->clearSendData($send['data']);
-                        // permet de récupérer les champ d'historique, nécessaire pour l'update de SAP par exemple
-                        $send['dataHistory'][$documentId] = $this->getDocumentData($documentId, 'H');
-                        $send['dataHistory'][$documentId] = $this->clearSendData($send['dataHistory'][$documentId]);
-                        $response = $this->solutionTarget->updateData($send);
-                    }
-                    // Delete data from target application
-                    elseif ('D' == $type) {
-                        $send = $this->checkBeforeDelete($send);
-                        if (empty($send['error'])) {
-                            $send['data'] = $this->beforeDelete($send['data']);
-                            $response = $this->solutionTarget->deleteData($send);
-                        } else {
-                            $response['error'] = $send['error'];
+                    foreach ($send['data'] as $key => $data) {
+                        // Création des données dans la cible
+                        if ('C' == $type) {
+                            // Permet de vérifier que l'on ne va pas créer un doublon dans la cible
+                            $send['data'] = $this->checkDuplicate($send['data']);
+                            $send['data'] = $this->clearSendData($send['data']);
+                            $response = $this->solutionTarget->createData($send);
                         }
-                    } else {
-                        $response[$documentId] = false;
-                        $response['error'] = 'Type transfer '.$type.' unknown. ';
+                        // Modification des données dans la cible
+                        elseif ('U' == $type) {
+                            $send['data'] = $this->clearSendData($send['data']);
+                            // permet de récupérer les champ d'historique, nécessaire pour l'update de SAP par exemple
+                            $send['dataHistory'][$documentId] = $this->getDocumentData($documentId, 'H');
+                            $send['dataHistory'][$documentId] = $this->clearSendData($send['dataHistory'][$documentId]);
+                            $response = $this->solutionTarget->updateData($send);
+                        }
+                        // Delete data from target application
+                        elseif ('D' == $type) {
+                            $send = $this->checkBeforeDelete($send);
+                            if (empty($send['error'])) {
+                                $send['data'] = $this->beforeDelete($send['data']);
+                                $response = $this->solutionTarget->deleteData($send);
+                            } else {
+                                $response['error'] = $send['error'];
+                            }
+                        } else {
+                            $response[$documentId] = false;
+                            $response['error'] = 'Type transfer ' . $type . ' unknown. ';
+                        }
                     }
                 } else {
                     $response[$documentId] = false;
                     $response['error'] = $connect['error'];
                 }
             }
-        
         } catch (\Exception $e) {
-            $response['error'] = 'Error : '.$e->getMessage().' '.$e->getFile().' Line : ( '.$e->getLine().' )';
+            $response['error'] = 'Error : ' . $e->getMessage() . ' ' . $e->getFile() . ' Line : ( ' . $e->getLine() . ' )';
             if (!$this->api) {
                 echo $response['error'];
             }
