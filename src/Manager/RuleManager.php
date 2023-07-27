@@ -1430,9 +1430,8 @@ class rulecore
                 foreach ($response as $key => $value) {
                     $arrayIdDocument[] = ['id' => $key];
                 }
-                $documentIds = implode(',', array_keys($response));
 
-                $msg_info[] = 'Transfer id '.$documentIds.' : Status change => Filter';
+                $msg_info[] = 'Transfer id '.implode(',', array_keys($response)).' : Status change => Filter';
                 $status = 'Filter_OK';
             } else {
                 // Update status if an action has been executed
@@ -1550,13 +1549,13 @@ class rulecore
         if (!empty($sendData)) {
             foreach ($sendData as $key => $value) {
                 if (isset($value['source_date_modified'])) {
-                    unset($sendData->$key['source_date_modified']);
+                    unset($sendData[$key]['source_date_modified']);
                 }
                 if (isset($value['id_doc_myddleware'])) {
-                    unset($sendData->$key['id_doc_myddleware']);
+                    unset($sendData[$key]['id_doc_myddleware']);
                 }
                 if (isset($value['Myddleware_element_id'])) {
-                    unset($sendData->$key['Myddleware_element_id']);
+                    unset($sendData[$key]['Myddleware_element_id']);
                 }     
             }
             return $sendData;
