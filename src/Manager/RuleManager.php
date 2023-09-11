@@ -1236,6 +1236,9 @@ class rulecore
         // Set the param values and clear all document attributes
         $this->documentManager->setParam($param, true);
         $status = $this->documentManager->getStatus();
+        if (isset($_POST['reload']) && !empty($_POST['reload']) && $_POST['reload'] == 'true'){
+            $status = 'New';
+        }
         // Si la règle n'est pas chargée alors on l'initialise.
         if (empty($this->ruleId)) {
             $this->ruleId = $this->documentManager->getRuleId();

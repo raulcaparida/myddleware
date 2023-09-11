@@ -439,7 +439,7 @@ class jobcore
     }
 
     // Function to modify a group of documents
-    public function massAction($action, $dataType, $ids, $forceAll, $fromStatus, $toStatus): bool
+    public function massAction($action, $dataType, $ids, $forceAll, $fromStatus=null, $toStatus=null): bool
     {
         try {
 			$errors = array();

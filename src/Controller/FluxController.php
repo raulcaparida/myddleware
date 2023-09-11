@@ -974,19 +974,17 @@ $formComment = $this->createForm(DocumentCommentType::class, null);
      * @Route("/flux/masscancel", name="flux_mass_cancel")
      */
     public function fluxMassCancelAction()
-    {
-        if (isset($_POST['ids']) && count($_POST['ids']) > 0) {
-            $this->jobManager->actionMassTransfer('cancel', 'document', $_POST['ids']);
-        }
-																			   
-																	
-														   
-											
-												 
-			 
-		 
-        exit;
+{
+    if (isset($_POST['ids']) && count($_POST['ids']) > 0) {
+        $this->jobManager->actionMassTransfer('cancel', 'document', $_POST['ids']);
     }
+    if (isset($_POST['reload']) && !empty($_POST['reload']) && $_POST['reload'] == 'true') {
+        // execute the command massaction rerun with forceAll
+        
+        $this->jobManager->massAction('rerun', 'document', $_POST['ids'], 'Y');
+    }
+    exit;
+}
 
     /**
      * @Route("/flux/massrun", name="flux_mass_run")
