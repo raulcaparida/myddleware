@@ -87,13 +87,14 @@ class salesforcecore extends solution {
 			else {
 				$token_url = 'https://login.salesforce.com/services/oauth2/token';
 			}
-			
+
 		    $post_fields = array(
 		        'grant_type' => 'password',
 		        'client_id' => $this->paramConnexion['consumerkey'],
 		        'client_secret' => $this->paramConnexion['consumersecret'],
 		        'username' => $this->paramConnexion['login'],
-		        'password' => $this->paramConnexion['password'].$this->paramConnexion['token']
+		        'password' => $this->paramConnexion['password']
+		        // 'password' => $this->paramConnexion['password'].$this->paramConnexion['token']
 		    );
 
  			$token_request_data = $this->call($token_url, $post_fields);

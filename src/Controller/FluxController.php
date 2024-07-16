@@ -334,7 +334,8 @@ class FluxController extends AbstractController
             if (!empty($data['gblstatus'])) {
                 $this->sessionService->setFluxFilterGlobalStatus($data['gblstatus']);
             } else {
-                $this->sessionService->removeFluxFilterGblStatus();
+                $this->sessionService->removeFluxFilterGlobalStatus();
+                // $this->sessionService->removeFluxFilterGblStatus();
             }
 
             if (!empty($data['type'])) {
