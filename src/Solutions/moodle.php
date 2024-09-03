@@ -38,6 +38,7 @@ class moodlecore extends solution
         'get_users_completion' => ['id', 'timemodified'],
         'get_users_last_access' => ['id', 'lastaccess'],
         'get_course_completion_by_date' => ['id', 'timecompleted'],
+        'get_user_course_progression_by_date' => ['id', 'timemodified'],
         'get_user_grades' => ['id', 'timemodified'],
         'groups' => ['id', 'timemodified'],
         'group_members' => ['id', 'timeadded'],
@@ -119,6 +120,7 @@ class moodlecore extends solution
                     'get_users_last_access' => 'Get users last access',
                     'get_enrolments_by_date' => 'Get enrolments',
                     'get_course_completion_by_date' => 'Get course completion',
+                    'get_user_course_progression_by_date' => 'Get user course progression',
                     'get_user_compentencies_by_date' => 'Get user compentency',
                     'get_competency_module_completion_by_date' => 'Get compentency module completion',
                     'get_user_grades' => 'Get user grades',
@@ -354,7 +356,6 @@ class moodlecore extends solution
 					throw new \Exception('ERROR : '.$xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3]->VALUE.chr(10));
 				}
 
-				
                 // Réponse standard pour les modules avec retours
                 if (
                         !empty($xml->MULTIPLE->SINGLE->KEY->VALUE)
@@ -671,7 +672,7 @@ class moodlecore extends solution
             case 'get_users_last_access':
                 return 'lastaccess';
                 break;
-            case 'users': 
+            case 'users':
 				$functionName = $this->getFunctionName($param);
 				if ($functionName == 'core_user_get_users') { // Only use to get one user (history purpose)
 					return 'id';
@@ -679,9 +680,9 @@ class moodlecore extends solution
 					return 'timemodified';
 				}
                 break;
-            case 'group_members': 
+            case 'group_members':
                 return 'timeadded';
-                break; 
+                break;
             default:
                 return 'timemodified';
                 break;
@@ -702,7 +703,7 @@ class moodlecore extends solution
             AND !empty($this->paramConnexion['course_custom_fields'])
         ) {
             return explode(',',$this->paramConnexion['course_custom_fields']);
-        } 
+        }
         return array();
     }
 

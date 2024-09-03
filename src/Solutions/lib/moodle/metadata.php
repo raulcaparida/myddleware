@@ -233,6 +233,14 @@ $moduleFields = [
         'courseid' => ['label' => 'Course ID', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0, 'required_relationship' => 1, 'relate' => true],
     ],
 
+    'get_user_course_progression_by_date' => [
+        'id' => ['label' => 'ID', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0],
+        'userid' => ['label' => 'User ID', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0, 'required_relationship' => 1, 'relate' => true],
+        'courseid' => ['label' => 'Course ID', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0, 'required_relationship' => 1, 'relate' => true],
+        'progression' => ['label' => 'Progression', 'type' => 'varchar(10)', 'type_bdd' => 'varchar(10)', 'required' => 0],
+        'timemodified' => ['label' => 'Time enrolled', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0]
+    ],
+
     'get_users_last_access' => [
         'lastaccess' => ['label' => 'Last access', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0],
         'userid' => ['label' => 'User ID', 'type' => 'varchar(255)', 'type_bdd' => 'varchar(255)', 'required' => 0, 'required_relationship' => 1, 'relate' => true],

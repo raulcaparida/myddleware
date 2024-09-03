@@ -178,7 +178,7 @@ class salesforcecore extends solution {
 					if($object['label'] == 'Groupe'){ // A travailler
 						$modules[$object['name']] = $object['label'].' ('.$object['name'].')';
 					} else {
-						$modules[$object['name']] = $object['label'];						
+						$modules[$object['name']] = $object['label'];
 					}
 				}
 			}
