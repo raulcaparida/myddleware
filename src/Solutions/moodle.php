@@ -214,7 +214,14 @@ class moodlecore extends solution
             $xml = $this->formatResponse('read', $response, $param);
 
             if (!empty($xml->ERRORCODE)) {
+				// $debugLogger = ["actual Error" => "Error $xml->ERRORCODE : $xml->MESSAGE", 
+				// 				"DEBUG" => [
+				// 					'URL'				=> $serverurl, 
+				// 					'param'				=> json_encode($parameters), 
+				// 					'paramConnexion'	=> json_encode($this->paramConnexion)
+				// 				]];
                 throw new \Exception("Error $xml->ERRORCODE : $xml->MESSAGE");
+                // throw new \Exception(json_encode($debugLogger));
             }
             // Transform the data to Myddleware format
             if (!empty($xml->MULTIPLE->SINGLE)) {
