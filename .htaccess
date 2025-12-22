@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteRule ^build/build/(.*)$ public/build/$1 [L,NC,QSA]
+
+RewriteCond %{THE_REQUEST} !public [NC]
+RewriteRule ^(.*)$ public/$1 [L,QSA]

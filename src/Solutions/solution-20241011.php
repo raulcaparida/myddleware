@@ -183,7 +183,7 @@ class solutioncore
                     $status = $forceStatus;
                 }
 
-                $documentManager->setMessage('. Failed to send document. ');
+                $documentManager->setMessage('Failed to send document. ');
                 $documentManager->setTypeError('E');
                 $documentManager->updateStatus($status);
                 $response[$idDoc] = false;
@@ -296,7 +296,7 @@ class solutioncore
 
             // Read data
             $readResult = $this->read($param);
-			
+
             // Save the new rule params into attribut dataSource
             if (!empty($readResult['ruleParams'])) {
                 $result['ruleParams'] = $readResult['ruleParams'];

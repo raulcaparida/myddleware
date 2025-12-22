@@ -854,6 +854,7 @@ $(function () {
 
 	$('#cancelflux').on('click', function () {
 		if (confirm(confirm_cancel)) { // Clic sur OK
+			console.log(massFluxTab, massFluxTab);
 			$.ajax({
 				type: "POST",
 				url: mass_cancel,

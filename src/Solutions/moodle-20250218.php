@@ -38,8 +38,6 @@ class moodlecore extends solution
         'get_users_completion' => ['id', 'timemodified'],
         'get_users_last_access' => ['id', 'lastaccess'],
         'get_course_completion_by_date' => ['id', 'timecompleted'],
-        'get_user_course_progression_by_date' => ['id', 'timemodified'],
-        'get_course_class' => ['id', 'timemodified'],
         'get_user_grades' => ['id', 'timemodified'],
         'groups' => ['id', 'timemodified'],
         'group_members' => ['id', 'timeadded'],
@@ -67,8 +65,6 @@ class moodlecore extends solution
             $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
             $response = $this->moodleClient->post($serverurl, $params);
             $xml = simplexml_load_string($response);
-
-			$this->logger->info("login serverurl = {$serverurl}");
 
             if (!empty($xml->SINGLE->KEY[0]->VALUE)) {
                 $this->connexion_valide = true;
@@ -123,8 +119,6 @@ class moodlecore extends solution
                     'get_users_last_access' => 'Get users last access',
                     'get_enrolments_by_date' => 'Get enrolments',
                     'get_course_completion_by_date' => 'Get course completion',
-                    'get_user_course_progression_by_date' => 'Get user course progression',
-                    'get_course_class' => 'Get Course SF Class', 
                     'get_user_compentencies_by_date' => 'Get user compentency',
                     'get_competency_module_completion_by_date' => 'Get compentency module completion',
                     'get_user_grades' => 'Get user grades',
@@ -166,14 +160,9 @@ class moodlecore extends solution
                     // Récupération de toutes les catégories existantes
                     $params = [];
                     $functionname = 'core_course_get_categories';
-					$urlEncodedParameters = '&'.$this->moodleClient->format_postdata_for_curlcall($params);
-                    $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname.$urlEncodedParameters;
-                    // $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
+                    $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
                     $response = $this->moodleClient->post($serverurl, $params);
                     $xml = simplexml_load_string($response);
-
-					$this->logger->info("get_module_fields serverurl = {$serverurl}");
-
                     if (!empty($xml->MULTIPLE->SINGLE)) {
                         foreach ($xml->MULTIPLE as $category) {
                             $this->moduleFields['categoryid']['option'][$category->SINGLE->KEY[0]->VALUE->__toString()] = $category->SINGLE->KEY[1]->VALUE->__toString();
@@ -200,10 +189,12 @@ class moodlecore extends solution
     {
         try {
 			// No read action in case of history on enrolment module
-			if (in_array($param['module'], array('manual_enrol_users', 'manual_unenrol_users')) AND $param['call_type'] == 'history') {
+			if (
+					in_array($param['module'], array('manual_enrol_users', 'manual_unenrol_users'))
+				AND $param['call_type'] == 'history'
+			) {
 				return array();
 			}
-
             $result = [];
             // Set parameters to call Moodle
             $parameters = $this->setParameters($param);
@@ -215,19 +206,14 @@ class moodlecore extends solution
             $attributeName = ($param['module'] == 'courses' || $param['module'] == 'groups' ? 'shortname' : 'name');
             $attributeValue = ($param['module'] == 'courses'? 'valueraw' : 'value');
 
-            // Call to Moodle :: add the parameters to the end of the url
-			$urlEncodedParameters = '&'.$this->moodleClient->format_postdata_for_curlcall($parameters);
-            $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionName.$urlEncodedParameters;
-            // $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionName;
+            // Call to Moodle
+            $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionName;
             $response = $this->moodleClient->post($serverurl, $parameters);
             $xml = $this->formatResponse('read', $response, $param);
 
-			$this->logger->info("read serverurl = {$serverurl}");
-
             if (!empty($xml->ERRORCODE)) {
                 throw new \Exception("Error $xml->ERRORCODE : $xml->MESSAGE");
-			}
-
+            }
             // Transform the data to Myddleware format
             if (!empty($xml->MULTIPLE->SINGLE)) {
                 foreach ($xml->MULTIPLE->SINGLE as $data) {
@@ -344,9 +330,6 @@ class moodlecore extends solution
                         $functionname = 'enrol_manual_enrol_users';
                         break;
                     case 'manual_unenrol_users':
-                        $enrolments = [$obj];
-                        $params = ['enrolments' => $enrolments];
-                        $functionname = 'enrol_manual_unenrol_users';
                         break;
                     case 'notes':
                         $notes = [$obj];
@@ -358,14 +341,10 @@ class moodlecore extends solution
                         break;
                 }
 
-				$urlEncodedParameters = '&'.$this->moodleClient->format_postdata_for_curlcall($params);
-                $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname.$urlEncodedParameters;
-                // $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
+                $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
                 $response = $this->moodleClient->post($serverurl, $params);
                 $xml = simplexml_load_string($response);
-
-				$this->logger->info("createData serverurl = {$serverurl}");
-
+				
 				// Check if there is a warning
 				if (
 						!empty($xml->SINGLE)
@@ -375,6 +354,7 @@ class moodlecore extends solution
 					throw new \Exception('ERROR : '.$xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3]->VALUE.chr(10));
 				}
 
+				
                 // Réponse standard pour les modules avec retours
                 if (
                         !empty($xml->MULTIPLE->SINGLE->KEY->VALUE)
@@ -393,41 +373,7 @@ class moodlecore extends solution
                         'error' => false,
                     ];
                 } elseif (!empty($xml->ERRORCODE)) {
-					$xmlData = [];
-					$debugInfo = '';
-					$existingRecordID = '';
-					foreach($xml->children() as $xmlname => $xmlValue) {
-						$xmlData[$xmlname] = (string)$xmlValue;
-
-						if ($xmlname == 'DEBUGINFO') {
-							$debugInfo = (string)$xmlValue;
-						}
-					}
-
-					$xmlJson = json_encode($xmlData);
-
-					$debugNotes = ['notes'			=> $notes, 
-								   'params'			=> $params, 
-								   'functionname'	=> $functionname, 
-								   'serverurl'		=> $serverurl, 
-								   'xmlResponse'	=> $xmlJson];
-
-					if (!empty($debugInfo)) {
-						$infoContents = explode(' ', $debugInfo);
-
-						if (is_numeric(end($infoContents))) {
-							$existingRecordID = end($infoContents);
-						}
-					}
-
-					if ($existingRecordID && in_array($functionname, ['core_user_create_users'])) {
-						$result[$idDoc] = [
-							'id' => $existingRecordID,
-							'error' => false,
-						];
-					} else {
-						throw new \Exception('XML ' . $xml->ERRORCODE.' : '.$xml->MESSAGE . ' debugNote: ' . $debugInfo);
-					}
+                    throw new \Exception($xml->ERRORCODE.' : '.$xml->MESSAGE);
                 }
                 // Si pas d'erreur et module sans retour alors on génère l'id
                 elseif (in_array($param['module'], ['manual_enrol_users'])) {
@@ -440,18 +386,8 @@ class moodlecore extends solution
                         'id' => $obj->groupid.'_'.$obj->userid,
                         'error' => false,
                     ];
-                } elseif (in_array($param['module'], ['manual_unenrol_users'])) {
-					$result[$idDoc] = [
-                        'id' => $obj->courseid.'_'.$obj->userid.'_'.$obj->roleid.'_suspend',
-                        'error' => false,
-                    ];
-				} else {
-					$debugNotes = ['notes'			=> $notes, 
-								   'params'			=> $params, 
-								   'functionname'	=> $functionname, 
-								   'serverurl'		=> $serverurl, 
-								   'xmlResponse'	=> $xml];
-                    throw new \Exception('Error unknown. debugNotes: ' . json_encode($debugNotes));
+                } else {
+                    throw new \Exception('Error unknown. ');
                 }
             } catch (\Exception $e) {
                 $error = $e->getMessage();
@@ -524,11 +460,6 @@ class moodlecore extends solution
                         $params = ['enrolments' => $enrolments];
                         $functionname = 'enrol_manual_enrol_users';
                         break;
-                    // case 'manual_unenrol_users':
-                    //     $enrolments = [$obj];
-                    //     $params = ['enrolments' => $enrolments];
-                    //     $functionname = 'enrol_manual_unenrol_users';
-                    //     break;
                     case 'notes':
                         $obj->id = $data['target_id'];
                         unset($obj->userid);
@@ -547,20 +478,16 @@ class moodlecore extends solution
                         break;
                 }
 
-				$urlEncodedParameters = '&'.$this->moodleClient->format_postdata_for_curlcall($params);
-                $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname.$urlEncodedParameters;
-                // $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
+                $serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'.'?wstoken='.$this->paramConnexion['token'].'&wsfunction='.$functionname;
                 $response = $this->moodleClient->post($serverurl, $params);			
                 $xml = simplexml_load_string($response);
-
-				$this->logger->info("updateData serverurl = {$serverurl}");
-
+				
 				// Check if there is a warning
 				if (
 						!empty($xml)
 					AND $xml->count() != 0	// Empty xml
-					AND (isset($xml->SINGLE->KEY) && $xml->SINGLE->KEY->attributes()->__toString() == 'warnings')
-					AND (isset($xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3]) && !empty($xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3]))
+					AND $xml->SINGLE->KEY->attributes()->__toString() == 'warnings'
+					AND !empty($xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3])
 				) {
 					throw new \Exception('ERROR : '.$xml->SINGLE->KEY->MULTIPLE->SINGLE->KEY[3]->VALUE.chr(10));
 				}
@@ -713,7 +640,6 @@ class moodlecore extends solution
     {
         $functionName = $this->getFunctionName($param);
         $parameters['time_modified'] = $this->dateTimeFromMyddleware($param['date_ref']);
-
         // If standard function called to search by criteria
         if (in_array($functionName, ['core_user_get_users', 'core_course_get_courses_by_field'])) {
             if (!empty($param['query'])) {
@@ -728,13 +654,9 @@ class moodlecore extends solution
             } else {
                 throw new \Exception('Filter criteria empty. Not allowed to run function '.$functionName.' without filter criteria.');
             }
-		} elseif (!empty($param['query']['id'])) {
+        } elseif (!empty($param['query']['id'])) {
             $parameters['id'] = $param['query']['id'];
         }
-
-		if (empty($parameters['id']) && !empty($parameters['time_modified']) && strcmp($functionName, 'local_myddleware_get_user_course_progression_by_date') === 0) {
-			unset($parameters['id']);
-		}
 
         return $parameters;
     }
@@ -749,7 +671,7 @@ class moodlecore extends solution
             case 'get_users_last_access':
                 return 'lastaccess';
                 break;
-            case 'users':
+            case 'users': 
 				$functionName = $this->getFunctionName($param);
 				if ($functionName == 'core_user_get_users') { // Only use to get one user (history purpose)
 					return 'id';
@@ -757,9 +679,9 @@ class moodlecore extends solution
 					return 'timemodified';
 				}
                 break;
-            case 'group_members':
+            case 'group_members': 
                 return 'timeadded';
-                break;
+                break; 
             default:
                 return 'timemodified';
                 break;
@@ -780,7 +702,7 @@ class moodlecore extends solution
             AND !empty($this->paramConnexion['course_custom_fields'])
         ) {
             return explode(',',$this->paramConnexion['course_custom_fields']);
-        }
+        } 
         return array();
     }
 

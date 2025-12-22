@@ -285,6 +285,7 @@ class rulecore
 
             // Connect to the application
             if ('source' == $type) {
+				$this->logger->info('login param: ' . json_encode($params));
                 $this->solutionSource = $this->solutionManager->get($this->rule['solution_source_name']);
                 $this->solutionSource->setApi($this->api);
                 $loginResult = $this->solutionSource->login($params);
@@ -543,7 +544,7 @@ class rulecore
             } elseif (!empty($connect['error'])) {
                 return $connect;
             } else {
-                return ['error' => 'Failed to connect to the source with rule : '.$this->ruleId.' .'];
+                return ['error' => 'Failed to connect to the source with rule: '.$this->ruleId.'. connect info: ' . json_encode($connect)];
             }
         }
 
